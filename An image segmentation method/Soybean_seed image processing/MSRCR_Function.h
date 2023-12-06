@@ -237,7 +237,7 @@ void Msrcr::FilterGaussian(IplImage* img, double sigma)
 void Msrcr::FilterGaussian(Mat src, Mat &dst, double sigma)
 {
 	IplImage tmp_ipl;
-	tmp_ipl = cvIplImage(src);
+	tmp_ipl = IplImage(src);
 	FilterGaussian(&tmp_ipl, sigma);
 	dst = cvarrToMat(&tmp_ipl);
 }
@@ -318,7 +318,7 @@ void Msrcr::FastFilter(IplImage *img, double sigma)
 void Msrcr::FastFilter(Mat src, Mat &dst, double sigma)
 {
 	IplImage tmp_ipl;
-	tmp_ipl = cvIplImage(src);
+	tmp_ipl = IplImage(src);
 	FastFilter(&tmp_ipl, sigma);
 	dst = cvarrToMat(&tmp_ipl);
 }
@@ -409,7 +409,7 @@ void Msrcr::Retinex(IplImage *img, double sigma, int gain, int offset)
 void Msrcr::Retinex(Mat src, Mat &dst, double sigma, int gain, int offset)
 {
 	IplImage tmp_ipl;
-	tmp_ipl = cvIplImage(src);
+	tmp_ipl = IplImage(src);
 	Retinex(&tmp_ipl, sigma, gain, offset);
 	dst = cvarrToMat(&tmp_ipl);
 }
@@ -519,7 +519,7 @@ void Msrcr::MultiScaleRetinex(IplImage *img, vector<double> weights, vector<doub
 void Msrcr::MultiScaleRetinex(Mat src, Mat &dst, vector<double> weights, vector<double> sigmas, int gain, int offset)
 {
 	IplImage tmp_ipl;
-	tmp_ipl = cvIplImage(src);
+	tmp_ipl = IplImage(src);
 	MultiScaleRetinex(&tmp_ipl, weights, sigmas, gain, offset);
 	dst = cvarrToMat(&tmp_ipl);
 }
@@ -557,13 +557,10 @@ void Msrcr::MultiScaleRetinexCR(IplImage *img, vector<double> weights, vector<do
 	int gain, int offset, double restoration_factor, double color_gain)
 
 {
-	double rate;
-
-
 	int i;
 	double weight;
 	int scales = sigmas.size();
-	IplImage *A, *B, *C, *fA, *fB, *fC, *fsA, *fsB, *fsC, *fsD, *fsE, *fsF,  *ImgGray;
+	IplImage *A, *B, *C, *fA, *fB, *fC, *fsA, *fsB, *fsC, *fsD, *fsE, *fsF;
 
 	// Initialize temp images
 	// 初始化缓存图像
@@ -576,34 +573,24 @@ void Msrcr::MultiScaleRetinexCR(IplImage *img, vector<double> weights, vector<do
 	fsD = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_32F, 1);
 	fsE = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_32F, 1);
 	fsF = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_32F, 1);
-        ImgGray= cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_32F, 1);
-
-
 
 	// Compute log image
 	// 计算对数图像
-	cvConvert(img, fB);//用于图像和矩阵之间的相互转换。
-	cvLog(fB, fA);//对数转换
+	cvConvert(img, fB);
+	cvLog(fB, fA);
 
 	// Normalize according to given weights
 	// 依照权重归一化
 	for (i = 0, weight = 0; i < scales; i++)
 		weight += weights[i];
 
-	/*cout << "############" << endl;
-	cout << weight << endl;*/
-
-	if (weight != 1.0) cvScale(fA, fA, weight);//fA缩小为原来的1
-	
-	
+	if (weight != 1.0) cvScale(fA, fA, weight);
 
 	// Filter at each scale
 	// 各尺度上进行滤波操作
 	for (i = 0; i < scales; i++) {
 		A = cvCloneImage(img);
-
 		FastFilter(A, sigmas[i]);
-		//cout << sigmas[i] << endl;
 
 		cvConvert(A, fB);
 		cvLog(fB, fC);
@@ -612,24 +599,8 @@ void Msrcr::MultiScaleRetinexCR(IplImage *img, vector<double> weights, vector<do
 		// Compute weighted difference
 		// 计算权重后两图像之差
 		cvScale(fC, fC, weights[i]);
-
 		cvSub(fA, fC, fA);
-
 	}
-	/*cvConvertScale(fA, fA, 110, 110);//img=110*fA+110
-
-	cv::Mat m0 = cv::cvarrToMat(fA);
-	
-	cv::imwrite("D://VS_Project//14.bmp", m0);//添加库imgcodecs 才能用此函数
-
-    cvConvertScale(fC, fC, 110, 110);//img=110*fA+110
-	cv::Mat m2 = cv::cvarrToMat(fC);
-	
-	cv::imwrite("D://VS_Project//15.bmp", m2);//添加库imgcodecs 才能用此函数
-
-	system("pause");*/
-
-	//cvConvertScale(fA, img, 110, 110);//img=110*fA+110
 
 	// Color restoration
 	// 颜色修复
@@ -652,94 +623,23 @@ void Msrcr::MultiScaleRetinexCR(IplImage *img, vector<double> weights, vector<do
 		// Sum components
 		// 求和
 		cvAdd(fsA, fsB, fsD);
-
-		/*cv::Mat m2 = cv::cvarrToMat(fsD);
-
-		cv::imwrite("D://VS_Project//15.bmp", m2);//添加库imgcodecs 才能用此函数*/
-
 		cvAdd(fsD, fsC, fsD);
-
-
-                //cvCvtColor(fsD,ImgGray,CV_BGR2GRAY);
-                //cv::Mat src_gray = cv::cvarrToMat(ImgGray);
-
-		cv::Mat m3 = cv::cvarrToMat(fsD);
-
-		cv::imwrite("/opt/MVS/Data/16.bmp", m3);//添加库imgcodecs 才能用此函数
-		m3 = imread("/opt/MVS/Data/16.bmp");
-		Mat  src_gray;
-		cvtColor(m3, src_gray, CV_BGR2GRAY);
-		//Mat binary_output;
-		//threshold(src_gray, binary_output, 0, 255, THRESH_OTSU);
-		//imwrite("D://VS_Project//17.bmp", binary_output);
-
-		//hist_(src_gray);
-
-		//drawHistogram(src_gray);
-		//system("pause");
-
-		double count_255 = 0;
-		for (int row = 0; row < img->height; row++)
-		{
-			for (int col = 0; col < img->width; col++)
-			{
-				if (src_gray.at<uchar>(row, col) ==255)
-				{
-					count_255 += 1;
-				}
-
-			}
-		}
-		rate = count_255 / 6291456;
-		//cout << count_255 << endl;
-		cout << rate << endl;
-
-
-		//cvThreshold(fsD, fsD, 100, 255, CV_THRESH_BINARY);
 
 		// Normalize weights
 		// 带权重矩阵归一化
 		cvDiv(fsA, fsD, fsA, restoration_factor);
-		/*cvConvertScale(fsA, fsA, 50, 110);
-		cv::Mat m4 = cv::cvarrToMat(fsA);
-		cv::imwrite("D://VS_Project//fsA.bmp", m4);//添加库imgcodecs 才能用此函数
-		*/
 		cvDiv(fsB, fsD, fsB, restoration_factor);
-		/*cvConvertScale(fsB, fsB, 50, 110);
-		cv::Mat m5 = cv::cvarrToMat(fsB);
-		cv::imwrite("D://VS_Project//fsB.bmp", m5);//添加库imgcodecs 才能用此函数
-		*/
 		cvDiv(fsC, fsD, fsC, restoration_factor);
-		/*cvConvertScale(fsC, fsC, 50, 110);
-		cv::Mat m6 = cv::cvarrToMat(fsC);
-		cv::imwrite("D://VS_Project//fsC.bmp", m6);//添加库imgcodecs 才能用此函数
-		*/
+
 		cvConvertScale(fsA, fsA, 1, 1);
-		/*cv::Mat m4 = cv::cvarrToMat(fsA);
-		cv::imwrite("D://VS_Project//fsA.bmp", m4);//添加库imgcodecs 才能用此函数
-		*/
 		cvConvertScale(fsB, fsB, 1, 1);
-		/*cv::Mat m5 = cv::cvarrToMat(fsB);
-		cv::imwrite("D://VS_Project//fsB.bmp", m5);//添加库imgcodecs 才能用此函数
-		*/
 		cvConvertScale(fsC, fsC, 1, 1);
-		//cv::Mat m6 = cv::cvarrToMat(fsC);
-		//cv::imwrite("D://VS_Project//fsC.bmp", m6);//添加库imgcodecs 才能用此函数
-		
-		
+
 		// Log weights
 		// 带权重矩阵求对数
-		/*cvLog(fsA, fsA);
-		cvLog(fsB, fsB);
-		cvLog(fsC, fsC);*/
-		
-
 		cvLog(fsA, fsA);
-		cvConvertScale(fsA, fsA, rate);
 		cvLog(fsB, fsB);
-		cvConvertScale(fsB, fsB, rate);
 		cvLog(fsC, fsC);
-		cvConvertScale(fsC, fsC, rate);
 
 		// Divide retinex image, weight accordingly and recombine
 		// 将Retinex图像切分为三个数组，按照权重和颜色增益重新组合
@@ -754,11 +654,8 @@ void Msrcr::MultiScaleRetinexCR(IplImage *img, vector<double> weights, vector<do
 
 	// Restore
 	// 恢复图像
-	cvConvertScale(fA, img, 110, 110);//img=110*fA+110
+	cvConvertScale(fA, img, 110, 110);//soybean
 
-	/*cv::Mat m1 = cv::cvarrToMat(img);
-	cv::imwrite("D://VS_Project//12.bmp", m1);//添加库imgcodecs 才能用此函数
-	*/
 // Release temp images
 // 释放缓存图像
 	cvReleaseImage(&fA);
@@ -770,7 +667,6 @@ void Msrcr::MultiScaleRetinexCR(IplImage *img, vector<double> weights, vector<do
 	cvReleaseImage(&fsD);
 	cvReleaseImage(&fsE);
 	cvReleaseImage(&fsF);
-        cvReleaseImage(&ImgGray);
 }
 
 
@@ -810,7 +706,7 @@ void Msrcr::MultiScaleRetinexCR(Mat src, Mat &dst, vector<double> weights, vecto
 	int gain, int offset, double restoration_factor, double color_gain)
 {
 	IplImage tmp_ipl;
-	tmp_ipl = cvIplImage(src);
+	tmp_ipl = IplImage(src);
 	MultiScaleRetinexCR(&tmp_ipl, weights, sigmas, gain, offset, restoration_factor, color_gain);
 	dst = cvarrToMat(&tmp_ipl);
 }
